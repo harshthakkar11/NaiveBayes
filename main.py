@@ -2,13 +2,11 @@
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-from csv import reader
-from random import seed
-from random import randrange
+import math
 from math import sqrt
 from math import exp
 from math import pi
+
 
 def clean_data(line):
     return line.replace('(', '').replace(')', '').replace(' ', '').strip().split(',')
@@ -29,182 +27,298 @@ def readFile(dataset_path):
     return input_np
 
 
-training_data = r'C:\Users\HARSH\Desktop\1a-training.txt'
-test_data = r'C:\Users\HARSH\Desktop\1a-test.txt'
-large_120_data = r'C:\Users\HARSH\Desktop\1c-data.txt'
+# load data and cleaning it
+training_data = r'1a-training.txt'
+test_data = r'1a-test.txt'
+large_120_data = r'1c-data.txt'
 
 train_np = readFile(training_data)
 print(train_np)
 test_np = readFile(test_data)
 print(test_np)
 large_np = readFile(large_120_data)
-print(large_np)
-
-# Load a CSV file
-def load_csv(filename):
-    dataset = list()
-    with open(filename, 'r') as file:
-        csv_reader = reader(file)
-        for row in csv_reader:
-            if not row:
-                continue
-            dataset.append(row)
-    return dataset
+checkr = readFile(large_120_data)
 
 
-# Convert string column to float
-def str_column_to_float(dataset, column):
-    for row in dataset:
-        row[column] = float(row[column].strip())
+def predict(test_np, train_np):
+    print("prediction for test data :")
+    # converting data to float
+    for i in range(len(train_np)):
+        for j in range(len(train_np[i]) - 1):
+            train_np[i][j] = float(train_np[i][j])
+    for i in range(len(test_np)):
+        for j in range(len(test_np[i])):
+            test_np[i][j] = float(test_np[i][j])
+    tmheight = 0
+    tmweight = 0
+    tmage = 0
+    twheight = 0
+    twweight = 0
+    twage = 0
+    mcount = 0
+    wcount = 0
+    # finding mean of data based on label
+    for i in range(len(train_np)):
+        if train_np[i][3] == 'M':
+            tmheight = train_np[i][0] + tmheight
+            tmweight = train_np[i][1] + tmweight
+            tmage = train_np[i][2] + tmage
+            mcount = mcount + 1
+        else:
+            twheight = train_np[i][0] + twheight
+            twweight = train_np[i][1] + twweight
+            twage = train_np[i][2] + twage
+            wcount = wcount + 1
+    hmmean = tmheight / mcount
+    wmmean = tmweight / mcount
+    ammean = tmage / mcount
+    hwmean = twheight / wcount
+    wwmean = twweight / wcount
+    awmean = twage / wcount
+    smheight = 0
+    smweight = 0
+    smage = 0
+    swheight = 0
+    swweight = 0
+    swage = 0
+
+    # finding standard deviation of each column and for different label
+    for i in range(len(train_np)):
+        if train_np[i][3] == 'M':
+            smheight = ((train_np[i][0] - hmmean) ** 2) + smheight
+            smweight = (train_np[i][1] - wmmean) ** 2 + smweight
+            smage = (train_np[i][2] - ammean) ** 2 + smage
+        else:
+            swheight = (train_np[i][0] - hwmean) ** 2 + swheight
+            swweight = (train_np[i][1] - wwmean) ** 2 + swweight
+            swage = (train_np[i][2] - awmean) ** 2 + swage
+    stdmh = sqrt((smheight / (mcount - 1)))
+    stdmw = sqrt((smweight / (mcount - 1)))
+    stdma = ((smage) ** 1 / 2) / (mcount - 1)
+    stdwh = ((swheight) ** 1 / 2) / (wcount - 1)
+    stdww = ((swweight) ** 1 / 2) / (wcount - 1)
+    stdwa = ((swage) ** 1 / 2) / (wcount - 1)
+    pm = mcount / len(train_np)
+    pw = wcount / len(train_np)
+    # finding probability of each column given label
+    for i in range(len(test_np)):
+        xMinusMeu = (test_np[i][0] - hmmean)
+        xMinusMeuSquare = xMinusMeu ** 2
+        sigma2Sq = 2 * (stdmh ** 2)
+        temp = (-xMinusMeuSquare * 1.0) / sigma2Sq
+        denominator = sqrt(2 * pi) * stdmh
+        phgm = (math.exp(temp) * 1.0) / denominator
+        temp2 = (-((test_np[i][1] - wmmean) ** 2) / (2 * (stdmw ** 2)))
+        exponent2 = math.exp(temp2)
+        pwgm = ((1 / ((sqrt(2 * pi)) * stdmw)) * exponent2)
+        temp3 = (-((test_np[i][2] - ammean) ** 2) / (2 * (stdma ** 2)))
+        exponent3 = math.exp(temp3)
+        pagm = ((1 / ((sqrt(2 * pi)) * stdmw)) * exponent3)
+        temp4 = (-(((test_np[i][0] - hwmean) ** 2) / ((2 * (stdwh ** 2)))))
+        exponent4 = math.exp(temp4)
+        phgw = (1 / ((sqrt(2 * pi) * stdwh))) * exponent4
+        temp5 = (-(((test_np[i][1] - wwmean) ** 2) / ((2 * (stdww ** 2)))))
+        exponent5 = math.exp(temp5)
+        pwgw = (1 / ((sqrt(2 * pi) * stdwh))) * exponent5
+        temp6 = (-(((test_np[i][1] - awmean) ** 2) / ((2 * (stdwa ** 2)))))
+        exponent6 = math.exp(temp6)
+        pagw = (1 / ((sqrt(2 * pi) * stdwa))) * exponent6
+        pom1 = pm * phgm * pwgm * pagm
+        pow1 = pw * phgw * pwgw * pagw
+        pom = pom1 / (pom1 + pow1)
+        pow = pow1 / (pom1 + pow1)
+        # predicting gender
+        if pom > pow:
+            print(test_np[i], "M")
+        else:
+            print(test_np[i], "W")
 
 
-# Convert string column to integer
-def str_column_to_int(dataset, column):
-    class_values = [row[column] for row in dataset]
-    unique = set(class_values)
-    lookup = dict()
-    for i, value in enumerate(unique):
-        lookup[value] = i
-    for row in dataset:
-        row[column] = lookup[row[column]]
-    return lookup
+predict(test_np, train_np)
 
 
-# Split a dataset into k folds
-def cross_validation_split(dataset, n_folds):
-    dataset_split = list()
-    dataset_copy = list(dataset)
-    fold_size = int(len(dataset) / n_folds)
-    for _ in range(n_folds):
-        fold = list()
-        while len(fold) < fold_size:
-            index = randrange(len(dataset_copy))
-            fold.append(dataset_copy.pop(index))
-        dataset_split.append(fold)
-    return dataset_split
+# predicting gender for each program data using height, weight and age
+
+def predict1(large_np):
+    # converting data to float
+    for i in range(len(large_np)):
+        for j in range(len(large_np[i]) - 1):
+            large_np[i][j] = float(large_np[i][j])
+    tmheight = 0
+    tmweight = 0
+    tmage = 0
+    twheight = 0
+    twweight = 0
+    twage = 0
+    mcount = 0
+    wcount = 0
+    # finding standard deviation of each column and for different label
+    for i in range(len(large_np)):
+        if large_np[i][3] == 'M':
+            tmheight = large_np[i][0] + tmheight
+            tmweight = large_np[i][1] + tmweight
+            tmage = large_np[i][2] + tmage
+            mcount = mcount + 1
+        else:
+            twheight = large_np[i][0] + twheight
+            twweight = large_np[i][1] + twweight
+            twage = large_np[i][2] + twage
+            wcount = wcount + 1
+    hmmean = tmheight / mcount
+    wmmean = tmweight / mcount
+    ammean = tmage / mcount
+    hwmean = twheight / wcount
+    wwmean = twweight / wcount
+    awmean = twage / wcount
+    smheight = 0
+    smweight = 0
+    smage = 0
+    swheight = 0
+    swweight = 0
+    swage = 0
+    pm = mcount / len(large_np)
+    pw = wcount / len(large_np)
+    # finding probability of each column given label
+    for i in range(len(large_np)):
+        for j in range(len(large_np)):
+            if i != j:
+                if large_np[j][3] == 'M':
+                    smheight = ((large_np[j][0] - hmmean) ** 2) + smheight
+                    smweight = (large_np[j][1] - wmmean) ** 2 + smweight
+                    smage = (large_np[j][2] - ammean) ** 2 + smage
+                else:
+                    swheight = (large_np[j][0] - hwmean) ** 2 + swheight
+                    swweight = (large_np[j][1] - wwmean) ** 2 + swweight
+                    swage = (large_np[j][2] - awmean) ** 2 + swage
+            stdmh = sqrt((smheight / (mcount - 1)))
+            stdmw = sqrt((smweight / (mcount - 1)))
+            stdma = sqrt((smage) / (mcount - 1))
+            stdwh = sqrt(((swheight) ** 1 / 2) / (wcount - 1))
+            stdww = sqrt(((swweight) ** 1 / 2) / (wcount - 1))
+            stdwa = sqrt(((swage) ** 1 / 2) / (wcount - 1))
+
+        xMinusMeu = (large_np[i][0] - hmmean)
+        xMinusMeuSquare = xMinusMeu ** 2
+        sigma2Sq = 2 * (stdmh ** 2)
+        temp = (-xMinusMeuSquare * 1.0) / sigma2Sq
+        denominator = sqrt(2 * pi) * stdmh
+        phgm = (math.exp(temp) * 1.0) / denominator
+        temp2 = (-((large_np[i][1] - wmmean) ** 2) / (2 * (stdmw ** 2)))
+        exponent2 = math.exp(temp2)
+        pwgm = ((1 / ((sqrt(2 * pi)) * stdmw)) * exponent2)
+        temp3 = (-((large_np[i][2] - ammean) ** 2) / (2 * (stdma ** 2)))
+        exponent3 = math.exp(temp3)
+        pagm = ((1 / ((sqrt(2 * pi)) * stdma)) * exponent3)
+        temp4 = (-(((large_np[i][0] - hwmean) ** 2) / ((2 * (stdwh ** 2)))))
+        exponent4 = math.exp(temp4)
+        phgw = ((1 / ((sqrt(2 * pi) * stdwh))) * exponent4)
+        temp5 = (-(((large_np[i][1] - wwmean) ** 2) / ((2 * (stdww ** 2)))))
+        exponent5 = math.exp(temp5)
+        pwgw = ((1 / ((sqrt(2 * pi) * stdwh))) * exponent5)
+        temp6 = (-(((large_np[i][1] - awmean) ** 2) / ((2 * (stdwa ** 2)))))
+        exponent6 = math.exp(temp6)
+        pagw = ((1 / ((sqrt(2 * pi) * stdwa))) * exponent6)
+        pom1 = pm * phgm * pwgm * pagm
+        pow1 = pw * phgw * pwgw * pagw
+        pom = pom1 / (pom1 + pow1)
+        pow = pow1 / (pom1 + pow1)
+        if pom > pow:
+            large_np[i][3] = 'M'
+        else:
+            large_np[i][3] = 'W'
+    per = 0
+
+    # checking accuracy
+    for i in range(len(large_np)):
+        if checkr[i][3] == large_np[i][3]:
+            per = per + 1
+    pert = per / len(large_np) * 100
+    print("Accuracy using height,weight and age in Gaussian Na ̈ıve Bayes ", pert)
 
 
-# Calculate accuracy percentage
-def accuracy_metric(actual, predicted):
-    correct = 0
-    for i in range(len(actual)):
-        if actual[i] == predicted[i]:
-            correct += 1
-    return correct / float(len(actual)) * 100.0
+predict1(large_np)
 
 
-# Evaluate an algorithm using a cross validation split
-def evaluate_algorithm(dataset, algorithm, n_folds, *args):
-    folds = cross_validation_split(dataset, n_folds)
-    scores = list()
-    for fold in folds:
-        train_set = list(folds)
-        train_set.remove(fold)
-        train_set = sum(train_set, [])
-        test_set = list()
-        for row in fold:
-            row_copy = list(row)
-            test_set.append(row_copy)
-            row_copy[-1] = None
-        predicted = algorithm(train_set, test_set, *args)
-        actual = [row[-1] for row in fold]
-        accuracy = accuracy_metric(actual, predicted)
-        scores.append(accuracy)
-    return scores
+# predicting gender for each program data using height and weight only
+def predict2(large_np):
+    for i in range(len(large_np)):
+        for j in range(len(large_np[i]) - 1):
+            large_np[i][j] = float(large_np[i][j])
+    tmheight = 0
+    tmweight = 0
+    twheight = 0
+    twweight = 0
+    mcount = 0
+    wcount = 0
+    for i in range(len(large_np)):
+        if large_np[i][3] == 'M':
+            tmheight = large_np[i][0] + tmheight
+            tmweight = large_np[i][1] + tmweight
+            mcount = mcount + 1
+        else:
+            twheight = large_np[i][0] + twheight
+            twweight = large_np[i][1] + twweight
+            wcount = wcount + 1
+    hmmean = tmheight / mcount
+    wmmean = tmweight / mcount
+    hwmean = twheight / wcount
+    wwmean = twweight / wcount
+    smheight = 0
+    smweight = 0
+    swheight = 0
+    swweight = 0
+    pm = mcount / len(large_np)
+    pw = wcount / len(large_np)
+    for i in range(len(large_np)):
+        for j in range(len(large_np)):
+            if i != j:
+                if large_np[j][3] == 'M':
+                    smheight = ((large_np[j][0] - hmmean) ** 2) + smheight
+                    smweight = (large_np[j][1] - wmmean) ** 2 + smweight
+                else:
+                    swheight = (large_np[j][0] - hwmean) ** 2 + swheight
+                    swweight = (large_np[j][1] - wwmean) ** 2 + swweight
+            stdmh = sqrt((smheight / (mcount - 1)))
+            stdmw = sqrt((smweight / (mcount - 1)))
+            stdwh = sqrt(((swheight) ** 1 / 2) / (wcount - 1))
+            stdww = sqrt(((swweight) ** 1 / 2) / (wcount - 1))
+
+        xMinusMeu = (large_np[i][0] - hmmean)
+        xMinusMeuSquare = xMinusMeu ** 2
+        sigma2Sq = 2 * (stdmh ** 2)
+        temp = (-xMinusMeuSquare * 1.0) / sigma2Sq
+        denominator = sqrt(2 * pi) * stdmh
+        phgm = (math.exp(temp) * 1.0) / denominator
+        # phgm = (1/((2*(3.14))*stdmh))*(math.exp(1/((test_np[i][0]-hmmean)/(2*(stdmh**2)))))
+        # print("=====================")
+        temp2 = (-((large_np[i][1] - wmmean) ** 2) / (2 * (stdmw ** 2)))
+        exponent2 = math.exp(temp2)
+        pwgm = ((1 / ((sqrt(2 * pi)) * stdmw)) * exponent2)
+        temp4 = (-(((large_np[i][0] - hwmean) ** 2) / ((2 * (stdwh ** 2)))))
+        exponent4 = math.exp(temp4)
+        phgw = ((1 / ((sqrt(2 * pi) * stdwh))) * exponent4)
+        temp5 = (-(((large_np[i][1] - wwmean) ** 2) / ((2 * (stdww ** 2)))))
+        exponent5 = math.exp(temp5)
+        pwgw = ((1 / ((sqrt(2 * pi) * stdwh))) * exponent5)
+        pom1 = pm * phgm * pwgm
+        pow1 = pw * phgw * pwgw
+        pom = pom1 / (pom1 + pow1)
+        pow = pow1 / (pom1 + pow1)
+        if pom > pow:
+            large_np[i][3] = 'M'
+        else:
+            large_np[i][3] = 'W'
+    per = 0
+    for i in range(len(large_np)):
+        if checkr[i][3] == large_np[i][3]:
+            per = per + 1
+    pert = per / len(large_np) * 100
+    print("Accuracy using only height and weight in Gaussian Na ̈ıve Bayes ", pert)
 
 
-# Split the dataset by class values, returns a dictionary
-def separate_by_class(dataset):
-    separated = dict()
-    for i in range(len(dataset)):
-        vector = dataset[i]
-        class_value = vector[-1]
-        if (class_value not in separated):
-            separated[class_value] = list()
-        separated[class_value].append(vector)
-    return separated
+predict2(large_np)
 
 
-# Calculate the mean of a list of numbers
-def mean(numbers):
-    return sum(numbers) / float(len(numbers))
-
-
-# Calculate the standard deviation of a list of numbers
-def stdev(numbers):
-    avg = mean(numbers)
-    variance = sum([(x - avg) ** 2 for x in numbers]) / float(len(numbers) - 1)
-    return sqrt(variance)
-
-
-# Calculate the mean, stdev and count for each column in a dataset
-def summarize_dataset(dataset):
-    summaries = [(mean(column), stdev(column), len(column)) for column in zip(*dataset)]
-    del (summaries[-1])
-    return summaries
-
-
-# Split dataset by class then calculate statistics for each row
-def summarize_by_class(dataset):
-    separated = separate_by_class(dataset)
-    summaries = dict()
-    for class_value, rows in separated.items():
-        summaries[class_value] = summarize_dataset(rows)
-    return summaries
-
-
-# Calculate the Gaussian probability distribution function for x
-def calculate_probability(x, mean, stdev):
-    exponent = exp(-((x - mean) ** 2 / (2 * stdev ** 2)))
-    return (1 / (sqrt(2 * pi) * stdev)) * exponent
-
-
-# Calculate the probabilities of predicting each class for a given row
-def calculate_class_probabilities(summaries, row):
-    total_rows = sum([summaries[label][0][2] for label in summaries])
-    probabilities = dict()
-    for class_value, class_summaries in summaries.items():
-        probabilities[class_value] = summaries[class_value][0][2] / float(total_rows)
-        for i in range(len(class_summaries)):
-            mean, stdev, _ = class_summaries[i]
-            probabilities[class_value] *= calculate_probability(row[i], mean, stdev)
-    return probabilities
-
-
-# Predict the class for a given row
-def predict(summaries, row):
-    probabilities = calculate_class_probabilities(summaries, row)
-    best_label, best_prob = None, -1
-    for class_value, probability in probabilities.items():
-        if best_label is None or probability > best_prob:
-            best_prob = probability
-            best_label = class_value
-    return best_label
-
-
-# Naive Bayes Algorithm
-def naive_bayes(train, test):
-    summarize = summarize_by_class(train)
-    predictions = list()
-    for row in test:
-        output = predict(summarize, row)
-        predictions.append(output)
-    return (predictions)
-
-
-# Test Naive Bayes on Iris Dataset
-seed(1)
-filename = r'C:\Users\HARSH\Documents\abc2.csv'
-dataset = load_csv(filename)
-for i in range(len(dataset[0]) - 1):
-    str_column_to_float(dataset, i)
-# convert class column to integers
-str_column_to_int(dataset, len(dataset[0]) - 1)
-# evaluate algorithm
-n_folds = 5
-scores = evaluate_algorithm(dataset, naive_bayes, n_folds)
-print('Scores: %s' % scores)
-print('Mean Accuracy: %.3f%%' % (sum(scores) / float(len(scores))))
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
     print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
